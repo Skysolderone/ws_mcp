@@ -1,0 +1,12 @@
+services:
+  mcp-server:
+    image: mcp-server:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 55555:8080
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ./mcp-server

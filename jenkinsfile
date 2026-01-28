@@ -1,0 +1,142 @@
+pipeline {
+    agent any
+
+    environment {
+        // Git仓库配置
+        GIT_REPO = 'https://github.com/Skysolderone/ws_mcp.git'
+        GIT_BRANCH = 'master'
+
+        // Docker镜像配置
+        DOCKER_REGISTRY = 'harbor.wws741.top'
+        IMAGE_NAME = 'mcp/mcp-server'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+
+        // 生产服务器配置
+        PROD_SERVER = 'ec2-54-65-152-26.ap-northeast-1.compute.amazonaws.com'
+        PROD_USER = 'ec2-user'
+
+        // Harbor凭证（用户名和密码，在Jenkins中配置）
+        HARBOR_USERNAME = 'admin'
+        HARBOR_PASSWORD = 'gg123456'  // 建议用Jenkins凭证而非明文
+    }
+
+    stages {
+        stage('检出代码') {
+            steps {
+                echo "拉取最新代码: ${GIT_REPO} 分支: ${GIT_BRANCH}"
+                git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
+            }
+        }
+
+        stage('构建Docker镜像') {
+            steps {
+                script {
+                    echo "构建Docker镜像: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh """
+
+                        docker build -t ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} .
+                        docker tag ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                    """
+                }
+            }
+        }
+
+        stage('推送镜像') {
+            steps {
+                script {
+                    echo '登录Harbor并推送镜像...'
+                    sh """
+                        echo ${HARBOR_PASSWORD} | docker login ${DOCKER_REGISTRY} -u ${HARBOR_USERNAME} --password-stdin
+                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:latest
+                        docker logout ${DOCKER_REGISTRY}
+                    """
+                }
+            }
+        }
+
+        stage('部署到生产环境') {
+            steps {
+                script {
+                    echo "部署到生产服务器: ${PROD_SERVER}"
+
+                    // 使用sshagent管理SSH凭据
+                    sshagent(['prod-ec2-ssh-key']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${PROD_USER}@${PROD_SERVER} '
+                                # 登录Harbor
+                                echo ${HARBOR_PASSWORD} | docker login ${DOCKER_REGISTRY} -u ${HARBOR_USERNAME} --password-stdin
+
+                                # 拉取最新镜像
+                                docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+
+                                # 停止并删除旧容器（如果存在）
+                                docker stop eino-use || true
+                                docker rm eino-use || true
+
+                                # 启动新容器
+                                # 注意：eino_use 是命令行工具，如果需要持续运行，可以使用 docker run -d
+                                # 如果需要交互式运行，可以去掉 -d 参数
+                                docker run -d \\
+                                    --name eino-use \\
+                                    --restart=always \\
+                                    -e TZ=Asia/Shanghai \\
+                                    -e CLAUDE_API_KEY=\${CLAUDE_API_KEY:-} \\
+                                    -e BINANCE_API_KEY=\${BINANCE_API_KEY:-} \\
+                                    -e BINANCE_SECRET_KEY=\${BINANCE_SECRET_KEY:-} \\
+                                    -e TRADE_RPC_URL=\${TRADE_RPC_URL:-} \\
+                                    -v /app/eino-use/config:/app/config \\
+                                    ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+
+                                # 清理旧镜像
+                                docker image prune -af --filter "label!=keep"
+
+                                # 退出登录
+                                docker logout ${DOCKER_REGISTRY}
+                            '
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('健康检查') {
+            steps {
+                script {
+                    echo '等待服务启动...'
+                    sleep 10
+
+                    sshagent(['prod-ec2-ssh-key']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${PROD_USER}@${PROD_SERVER} '
+                                # 检查容器状态
+                                docker ps | grep eino-use || echo "容器未运行"
+
+                                # 检查容器日志（最近10行）
+                                docker logs --tail 10 eino-use || echo "无法获取容器日志"
+                            '
+                        """
+                    }
+                    echo '✓ 部署完成'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '🎉 部署成功！'
+            // 可以添加通知，如钉钉、企业微信等
+        }
+        failure {
+            echo '❌ 部署失败！'
+            // 可以添加告警通知
+        }
+        always {
+            script {
+                // 清理本地Docker镜像
+                sh "docker rmi ${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG} || true"
+            }
+        }
+    }
+}
