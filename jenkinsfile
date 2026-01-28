@@ -63,30 +63,25 @@ pipeline {
                     // 使用sshagent管理SSH凭据
                     sshagent(['prod-ec2-ssh-key']) {
                         sh """
+                            # 传输 docker-compose.yaml 到服务器
+                            scp -o StrictHostKeyChecking=no docker-compose.yaml ${PROD_USER}@${PROD_SERVER}:/app/mcp-server/
+
                             ssh -o StrictHostKeyChecking=no ${PROD_USER}@${PROD_SERVER} '
                                 # 登录Harbor
                                 echo ${HARBOR_PASSWORD} | docker login ${DOCKER_REGISTRY} -u ${HARBOR_USERNAME} --password-stdin
 
+                                # 进入部署目录
+                                cd /app/mcp-server
+
                                 # 拉取最新镜像
                                 docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
 
-                                # 停止并删除旧容器（如果存在）
-                                docker stop eino-use || true
-                                docker rm eino-use || true
+                                # 更新 compose 文件中的镜像标签
+                                sed -i "s|image:.*|image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|" docker-compose.yaml
 
-                                # 启动新容器
-                                # 注意：eino_use 是命令行工具，如果需要持续运行，可以使用 docker run -d
-                                # 如果需要交互式运行，可以去掉 -d 参数
-                                docker run -d \\
-                                    --name eino-use \\
-                                    --restart=always \\
-                                    -e TZ=Asia/Shanghai \\
-                                    -e CLAUDE_API_KEY=\${CLAUDE_API_KEY:-} \\
-                                    -e BINANCE_API_KEY=\${BINANCE_API_KEY:-} \\
-                                    -e BINANCE_SECRET_KEY=\${BINANCE_SECRET_KEY:-} \\
-                                    -e TRADE_RPC_URL=\${TRADE_RPC_URL:-} \\
-                                    -v /app/eino-use/config:/app/config \\
-                                    ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                                # 使用 docker-compose 部署
+                                docker-compose down || true
+                                docker-compose up -d
 
                                 # 清理旧镜像
                                 docker image prune -af --filter "label!=keep"

@@ -1,9 +1,13 @@
 services:
   mcp-server:
     image: harbor.wws741.top/mcp/mcp-server:latest
+    container_name: mcp-server
     build:
       context: .
       dockerfile: dockerfile
     ports:
       - "55555:8080"
     restart: unless-stopped
+
+    volumes:
+      - /app/mcp-server
