@@ -8,11 +8,11 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func TestGetRsi(t *testing.T) {
+func TestGetPosition(t *testing.T) {
 	mcpClient := GetClient()
 	ctx := context.Background()
 	reuslt, err := mcpClient.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Name: "get_rsi", Arguments: map[string]any{"symbol": "BTCUSDT"}},
+		Params: mcp.CallToolParams{Name: "get_position", Arguments: map[string]any{"symbol": "BTCUSDT"}},
 	})
 	if err != nil {
 		t.Fatalf("Error calling tool: %v", err)
@@ -22,5 +22,4 @@ func TestGetRsi(t *testing.T) {
 			fmt.Println(txtContent.Text)
 		}
 	}
-
 }
