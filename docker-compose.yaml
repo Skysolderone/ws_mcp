@@ -8,6 +8,3 @@ services:
     ports:
       - "55555:8080"
     restart: unless-stopped
-
-    volumes:
-      - /app/mcp-server

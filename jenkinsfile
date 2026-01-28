@@ -64,22 +64,20 @@ pipeline {
                     sshagent(['prod-ec2-ssh-key']) {
                         sh """
                             # 传输 docker-compose.yaml 到服务器
-                            scp -o StrictHostKeyChecking=no docker-compose.yaml ${PROD_USER}@${PROD_SERVER}:/app/mcp-server/
+                            scp -o StrictHostKeyChecking=no docker-compose.yaml ${PROD_USER}@${PROD_SERVER}:~/
 
                             ssh -o StrictHostKeyChecking=no ${PROD_USER}@${PROD_SERVER} '
                                 # 登录Harbor
                                 echo ${HARBOR_PASSWORD} | docker login ${DOCKER_REGISTRY} -u ${HARBOR_USERNAME} --password-stdin
 
-                                # 进入部署目录
-                                cd /app/mcp-server
-
                                 # 拉取最新镜像
                                 docker pull ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
 
                                 # 更新 compose 文件中的镜像标签
-                                sed -i "s|image:.*|image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|" docker-compose.yaml
+                                sed -i "s|image:.*|image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|" ~/docker-compose.yaml
 
                                 # 使用 docker-compose 部署
+                                cd ~
                                 docker-compose down || true
                                 docker-compose up -d
 
