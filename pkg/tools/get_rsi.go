@@ -13,13 +13,14 @@ func GetRsiTool() mcp.Tool {
 		Description: "Get the RSI of a symbol",
 		InputSchema: mcp.ToolInputSchema{
 			Properties: map[string]any{
+
 				"symbol": map[string]any{
 					"type":        "string",
 					"description": "The symbol to get the RSI of",
-					"required":    true,
 				},
 			},
-			Type: "object",
+			Required: []string{"symbol"},
+			Type:     "object",
 		},
 		OutputSchema: mcp.ToolOutputSchema{
 			Properties: map[string]any{
