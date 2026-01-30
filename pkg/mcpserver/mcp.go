@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"log"
 	"mcp/internal/binance"
+	"mcp/pkg/rpc"
 	"mcp/pkg/tools"
 
 	"github.com/mark3labs/mcp-go/server"
@@ -23,9 +24,14 @@ var toolList = []server.ServerTool{
 		Tool:    tools.PlaceOrderTool(),
 		Handler: tools.PlaceOrderHandler,
 	},
+	{
+		Tool:    tools.GetPriceTool(),
+		Handler: tools.GetPriceHandler,
+	},
 }
 
 func InitServer() {
+	rpc.InitRpcClient()
 	binance.InitClient()
 	McpServer = server.NewMCPServer(
 		"Ws Trade MCP Server",

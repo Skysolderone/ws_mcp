@@ -8,19 +8,15 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func GetRsiTool() mcp.Tool {
+func GetPriceTool() mcp.Tool {
 	return mcp.Tool{
-		Name:        "get_rsi",
-		Description: "获取指定交易对的RSI指标值，从Binance获取K线数据并计算",
+		Name:        "get_price",
+		Description: "获取指定交易对的标记价格",
 		InputSchema: mcp.ToolInputSchema{
 			Properties: map[string]any{
 				"symbol": map[string]any{
 					"type":        "string",
 					"description": "交易对符号，例如 BTCUSDT, ETHUSDT",
-				},
-				"interval": map[string]any{
-					"type":        "string",
-					"description": "K线周期，例如 1d(日线), 4h(4小时), 1h(1小时)，默认1d",
 				},
 			},
 			Required: []string{"symbol"},
@@ -29,16 +25,15 @@ func GetRsiTool() mcp.Tool {
 	}
 }
 
-func GetRsiHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func GetPriceHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	symbol, err := request.RequireString("symbol")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	interval := request.GetString("interval", "1d")
 
-	rsi, err := rpc.GetRsi(ctx, symbol, interval)
+	price, err := rpc.GetPrice(ctx, symbol)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	return mcp.NewToolResultText(fmt.Sprintf("交易对: %s", rsi)), nil
+	return mcp.NewToolResultText(fmt.Sprintf("交易对: %s, 价格: %f", price.Symbol, price.Price)), nil
 }
