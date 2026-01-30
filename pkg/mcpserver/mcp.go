@@ -2,7 +2,7 @@ package mcpserver
 
 import (
 	"log"
-	"mcp/internal/binance"
+
 	"mcp/pkg/rpc"
 	"mcp/pkg/tools"
 
@@ -20,10 +20,7 @@ var toolList = []server.ServerTool{
 		Tool:    tools.GetPositionTool(),
 		Handler: tools.GetPositionHandler,
 	},
-	{
-		Tool:    tools.PlaceOrderTool(),
-		Handler: tools.PlaceOrderHandler,
-	},
+
 	{
 		Tool:    tools.GetPriceTool(),
 		Handler: tools.GetPriceHandler,
@@ -32,7 +29,7 @@ var toolList = []server.ServerTool{
 
 func InitServer() {
 	rpc.InitRpcClient()
-	binance.InitClient()
+
 	McpServer = server.NewMCPServer(
 		"Ws Trade MCP Server",
 		"1.0.0",
