@@ -22,4 +22,5 @@ func TestGetPrice(t *testing.T) {
 			fmt.Println(txtContent.Text)
 		}
 	}
+
 }

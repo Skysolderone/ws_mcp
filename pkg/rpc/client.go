@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	"mcp/pkg/rpc/proto/position"
 	"mcp/pkg/rpc/proto/price"
 	"mcp/pkg/rpc/proto/rsi"
 
@@ -16,11 +17,12 @@ import (
 )
 
 var (
-	Services    map[string]string
-	grpcConns   map[string]*grpc.ClientConn
-	connMutex   sync.RWMutex
-	priceClient price.PriceServiceClient
-	rsiClient   rsi.RsiClient
+	Services       map[string]string
+	grpcConns      map[string]*grpc.ClientConn
+	connMutex      sync.RWMutex
+	priceClient    price.PriceServiceClient
+	rsiClient      rsi.RsiClient
+	positionClient position.PositionClient
 )
 
 func init() {
@@ -101,6 +103,16 @@ func initGrpcClients() {
 			log.Println("RSI客户端初始化成功")
 		}
 	}
+	// 初始化Position客户端
+	if addr, ok := Services["position"]; ok {
+		conn, err := getGrpcConn(addr)
+		if err != nil {
+			log.Printf("连接Position服务失败: %v", err)
+		} else {
+			positionClient = position.NewPositionClient(conn)
+			log.Println("Position客户端初始化成功")
+		}
+	}
 }
 
 func getGrpcConn(addr string) (*grpc.ClientConn, error) {
@@ -154,4 +166,12 @@ func CloseAllConns() {
 		}
 	}
 	grpcConns = make(map[string]*grpc.ClientConn)
+}
+
+// GetPosition 获取仓位
+func GetPosition(ctx context.Context) (*position.PositionList, error) {
+	if positionClient == nil {
+		return nil, fmt.Errorf("position客户端未初始化")
+	}
+	return positionClient.GetPosition(ctx, &position.GetPositionRequest{})
 }
