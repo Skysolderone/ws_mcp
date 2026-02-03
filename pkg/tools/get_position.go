@@ -11,6 +11,11 @@ func GetPositionTool() mcp.Tool {
 	return mcp.Tool{
 		Name:        "get_position",
 		Description: "获取所有仓位",
+		InputSchema: mcp.ToolInputSchema{
+			Properties: map[string]any{},
+			Required:   []string{},
+			Type:       "object",
+		},
 	}
 }
 
