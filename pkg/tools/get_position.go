@@ -10,7 +10,7 @@ import (
 func GetPositionTool() mcp.Tool {
 	return mcp.Tool{
 		Name:        "get_position",
-		Description: "Get the position of a symbol",
+		Description: "获取所有仓位",
 	}
 }
 
